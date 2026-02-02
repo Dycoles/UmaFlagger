@@ -4,13 +4,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputBox = document.getElementById("input");
   const outputBox = document.getElementById("highlighted");
 
-  /* ========== CONFIG ========== */
   const bannedWords = [
     "ho",
     "banned"
   ];
 
-  /* ========== PATTERN GENERATION ========== */
+  // Generate patterns with spaces inserted
   function generatePatterns(word) {
     const patterns = new Set();
     patterns.add(word);
@@ -25,9 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const bannedPatterns = bannedWords.flatMap(w =>
     generatePatterns(w.toLowerCase())
   );
-  console.log("Generated patterns:", bannedPatterns);
 
-  /* ========== ANALYZE FUNCTION ========== */
+  // Analyze text for banned patterns, returning matches
   function analyze(text) {
     const lower = text.toLowerCase();
     let matches = [];
@@ -35,11 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bannedPatterns.forEach(pattern => {
       let index = 0;
       while ((index = lower.indexOf(pattern, index)) !== -1) {
-        matches.push({
-          start: index,
-          end: index + pattern.length,
-          pattern
-        });
+        matches.push({ start: index, end: index + pattern.length, pattern });
         index += 1;
       }
     });
@@ -47,66 +41,51 @@ document.addEventListener("DOMContentLoaded", () => {
     return matches;
   }
 
-  /* ========== RENDER HIGHLIGHTED ========== */
- function mergeRanges(ranges) {
-  if (ranges.length === 0) return [];
-
-  // Sort by start index
-  ranges.sort((a, b) => a.start - b.start);
-
-  const merged = [];
-  let current = { start: ranges[0].start, end: ranges[0].end };
-
-  for (let i = 1; i < ranges.length; i++) {
-    const r = ranges[i];
-    if (r.start <= current.end) {
-      // Overlapping or adjacent, extend the current range
-      if (r.end > current.end) current.end = r.end;
-    } else {
-      merged.push(current);
-      current = { start: r.start, end: r.end };
+  // Merge overlapping or adjacent ranges
+  function mergeRanges(ranges) {
+    if (!ranges.length) return [];
+    ranges.sort((a, b) => a.start - b.start);
+    const merged = [];
+    let current = { ...ranges[0] };
+    for (let i = 1; i < ranges.length; i++) {
+      if (ranges[i].start <= current.end) {
+        current.end = Math.max(current.end, ranges[i].end);
+      } else {
+        merged.push(current);
+        current = { ...ranges[i] };
+      }
     }
+    merged.push(current);
+    return merged;
   }
-  merged.push(current);
-  return merged;
-}
 
-function render(text, matches) {
-  const merged = mergeRanges(matches);
+  // Escape HTML special characters
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[m]));
+  }
 
-  let result = "";
-  let lastIndex = 0;
+  // Render text with highlights
+  function render(text, matches) {
+    const merged = mergeRanges(matches);
+    let result = '';
+    let lastIndex = 0;
+    for (const range of merged) {
+      result += escapeHtml(text.slice(lastIndex, range.start));
+      const highlighted = escapeHtml(text.slice(range.start, range.end)).replace(/ /g, '_');
+      result += `<span class="highlight">${highlighted}</span>`;
+      lastIndex = range.end;
+    }
+    result += escapeHtml(text.slice(lastIndex));
+    return result;
+  }
 
-  merged.forEach(range => {
-    // Add text before the highlight
-    result += escapeHtml(text.slice(lastIndex, range.start));
-    // Add highlighted text with spaces replaced by _
-    const highlighted = escapeHtml(text.slice(range.start, range.end)).replace(/ /g, "_");
-    result += `<span class="highlight">${highlighted}</span>`;
-    lastIndex = range.end;
-  });
-
-  // Add remaining text after last highlight
-  result += escapeHtml(text.slice(lastIndex));
-
-  return result;
-}
-
-// Simple helper to escape HTML special chars to prevent XSS and broken tags
-function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, function(m) {
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[m];
-  });
-}
-
-
-  /* ========== LIVE UPDATE ========== */
+  // Update overlay highlights on input event
   function update() {
     const text = inputBox.value;
     const matches = analyze(text);
@@ -115,6 +94,5 @@ function escapeHtml(str) {
 
   inputBox.addEventListener("input", update);
 
-  // initialize empty
-  update();
+  update(); // initialize highlight overlay
 });
