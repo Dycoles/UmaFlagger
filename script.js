@@ -4,44 +4,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputBox = document.getElementById("input");
   const outputBox = document.getElementById("highlighted");
 
+  // List of banned words (lowercase)
   const bannedWords = [
     "ho",
     "banned"
   ];
 
-  // Generate patterns with spaces inserted
-  function generatePatterns(word) {
-    const patterns = new Set();
-    patterns.add(word);
-    patterns.add(" " + word);
-    patterns.add(word + " ");
-    for (let i = 1; i < word.length; i++) {
-      patterns.add(word.slice(0, i) + " " + word.slice(i));
-    }
-    return [...patterns];
+  // Escape regex special chars
+  function escapeRegex(str) {
+    return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
   }
 
-  const bannedPatterns = bannedWords.flatMap(w =>
-    generatePatterns(w.toLowerCase())
-  );
+  // Create regex that matches word with optional spaces inside,
+  // and boundaries at start (^ or whitespace) and end (whitespace or $)
+  function makeRegexForWord(word) {
+    const letters = [...word].map(escapeRegex);
+    const pattern = letters.join('\\s*');
+    return new RegExp(`(?:^|\\s)${pattern}(?:\\s|$)`, 'gi'); // g & i for global and case-insensitive
+  }
 
-  // Analyze text for banned patterns, returning matches
+  const bannedRegexes = bannedWords.map(makeRegexForWord);
+  console.log("Compiled banned regexes:", bannedRegexes);
+
+  // Analyze text and find matches of banned words
   function analyze(text) {
-    const lower = text.toLowerCase();
     let matches = [];
 
-    bannedPatterns.forEach(pattern => {
-      let index = 0;
-      while ((index = lower.indexOf(pattern, index)) !== -1) {
-        matches.push({ start: index, end: index + pattern.length, pattern });
-        index += 1;
+    bannedRegexes.forEach(regex => {
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index + (match[0].match(/^\s/) ? 1 : 0), // skip leading space if matched
+          end: regex.lastIndex,
+          pattern: regex.source
+        });
+
+        // To avoid infinite loop on zero-length matches
+        if (regex.lastIndex === match.index) {
+          regex.lastIndex++;
+        }
       }
     });
 
     return matches;
   }
 
-  // Merge overlapping or adjacent ranges
+  // Merge overlapping or adjacent matches
   function mergeRanges(ranges) {
     if (!ranges.length) return [];
     ranges.sort((a, b) => a.start - b.start);
@@ -59,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return merged;
   }
 
-  // Escape HTML special characters
+  // Escape HTML special characters to prevent injection and broken tags
   function escapeHtml(str) {
     return str.replace(/[&<>"']/g, m => ({
       '&': '&amp;',
@@ -70,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }[m]));
   }
 
-  // Render text with highlights
+  // Render text with highlight spans replacing spaces with underscores inside highlights
   function render(text, matches) {
     const merged = mergeRanges(matches);
     let result = '';
@@ -85,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   }
 
-  // Update overlay highlights on input event
+  // Update highlight overlay on every input event
   function update() {
     const text = inputBox.value;
     const matches = analyze(text);
@@ -94,5 +102,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   inputBox.addEventListener("input", update);
 
-  update(); // initialize highlight overlay
+  // Initial highlight (empty)
+  update();
 });
