@@ -48,20 +48,63 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ========== RENDER HIGHLIGHTED ========== */
-  function render(text, matches) {
-    let result = text;
-    matches
-      .sort((a, b) => b.start - a.start)
-      .forEach(m => {
-        const raw = text.slice(m.start, m.end);
-        const visible = raw.replace(/ /g, "_");
-        result =
-          result.slice(0, m.start) +
-          `<span class="highlight" title="${m.pattern.replace(/ /g, "_")}">${visible}</span>` +
-          result.slice(m.end);
-      });
-    return result;
+ function mergeRanges(ranges) {
+  if (ranges.length === 0) return [];
+
+  // Sort by start index
+  ranges.sort((a, b) => a.start - b.start);
+
+  const merged = [];
+  let current = { start: ranges[0].start, end: ranges[0].end };
+
+  for (let i = 1; i < ranges.length; i++) {
+    const r = ranges[i];
+    if (r.start <= current.end) {
+      // Overlapping or adjacent, extend the current range
+      if (r.end > current.end) current.end = r.end;
+    } else {
+      merged.push(current);
+      current = { start: r.start, end: r.end };
+    }
   }
+  merged.push(current);
+  return merged;
+}
+
+function render(text, matches) {
+  const merged = mergeRanges(matches);
+
+  let result = "";
+  let lastIndex = 0;
+
+  merged.forEach(range => {
+    // Add text before the highlight
+    result += escapeHtml(text.slice(lastIndex, range.start));
+    // Add highlighted text with spaces replaced by _
+    const highlighted = escapeHtml(text.slice(range.start, range.end)).replace(/ /g, "_");
+    result += `<span class="highlight">${highlighted}</span>`;
+    lastIndex = range.end;
+  });
+
+  // Add remaining text after last highlight
+  result += escapeHtml(text.slice(lastIndex));
+
+  return result;
+}
+
+// Simple helper to escape HTML special chars to prevent XSS and broken tags
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, function(m) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m];
+  });
+}
+
 
   /* ========== LIVE UPDATE ========== */
   function update() {
