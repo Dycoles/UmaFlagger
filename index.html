@@ -1,20 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Text Filter Checker</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="script.js"></script>
+<meta charset="UTF-8">
+<title>Uma Chat Flagger</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .wrapper { position: relative; width: 600px; }
+  textarea {
+    width: 100%;
+    height: 150px;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 8px;
+    box-sizing: border-box;
+    background: transparent;
+    color: transparent; /* hide text, show overlay instead */
+    caret-color: black; /* keep caret visible */
+    position: relative;
+    z-index: 2;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+  }
+  .highlighted {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 150px;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 8px;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: black;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .highlight {
+    background-color: yellow;
+  }
+</style>
 </head>
 <body>
 
-  <h1>Umamusume Text Checker</h1>
+<h2>Uma Chat Flagger</h2>
+<div class="wrapper">
+  <div id="highlighted" class="highlighted"></div>
+  <textarea id="input" placeholder="Type text here..."></textarea>
+</div>
 
-  <textarea id="input" rows="8" placeholder="Type your text here..."></textarea>
-
-  <button id="analyze">Analyze</button>
-
-  <div id="output"></div>
-
+<script src="script.js"></script>
 </body>
 </html>
