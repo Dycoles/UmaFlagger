@@ -5,6 +5,18 @@ const bannedWords = ["ho", "anus"];
 const input = document.getElementById("input");
 const output = document.getElementById("output");
 
+function hasRequiredSpace(text, start, end) {
+  // space before
+  if (start > 0 && text[start - 1] === " ") return true;
+  // space after
+  if (end < text.length - 1 && text[end + 1] === " ") return true;
+  // space between letters
+  for (let i = start; i <= end; i++) {
+    if (text[i] === " ") return true;
+  }
+  return false;
+}
+
 function findOffenses(text, banned) {
   const offenses = [];
 
@@ -17,9 +29,14 @@ function findOffenses(text, banned) {
     banned.forEach(word => {
       let idx = buffer.indexOf(word);
       while (idx !== -1) {
-        const start = bufferMap[idx];
-        const end = bufferMap[idx + word.length - 1];
-        offenses.push([start, end]);
+        const origStart = bufferMap[idx];
+        const origEnd = bufferMap[idx + word.length - 1];
+
+        // REQUIRE at least one literal space before/after/between
+        if (hasRequiredSpace(text, origStart, origEnd)) {
+          offenses.push([origStart, origEnd]);
+        }
+
         idx = buffer.indexOf(word, idx + 1);
       }
     });
@@ -35,10 +52,9 @@ function findOffenses(text, banned) {
       buffer += ch.toLowerCase();
       bufferMap.push(i);
     } else if (ch === " " || ch === "'" || ch === "_") {
-      // allow soft separators to be skipped
+      // soft separators: ignored but don't flush
       continue;
     } else {
-      // hard break on punctuation/newlines
       flushBuffer();
     }
   }
@@ -55,11 +71,11 @@ function highlight(text, ranges) {
   let result = "";
   let lastIndex = 0;
 
-  ranges.forEach(([start, end]) => {
+  for (const [start, end] of ranges) {
     result += escapeHTML(text.slice(lastIndex, start));
     result += `<mark>${escapeHTML(text.slice(start, end + 1))}</mark>`;
     lastIndex = end + 1;
-  });
+  }
 
   result += escapeHTML(text.slice(lastIndex));
   return result;
