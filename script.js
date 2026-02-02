@@ -1,107 +1,72 @@
-console.log("script.js loaded");
+// script.js
 
-document.addEventListener("DOMContentLoaded", () => {
-  const inputBox = document.getElementById("input");
-  const outputBox = document.getElementById("highlighted");
+const bannedWords = ["ho", "anus"];
 
-  // List of banned words (lowercase)
-  const bannedWords = [
-    "ho",
-    "banned"
-  ];
+const input = document.getElementById("input");
+const output = document.getElementById("output");
 
-  // Escape regex special chars
-  function escapeRegex(str) {
-    return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-  }
+function findOffenses(text, banned) {
+  const offenses = [];
 
-  // Create regex that matches word with optional spaces inside,
-  // and boundaries at start (^ or whitespace) and end (whitespace or $)
-  function makeRegexForWord(word) {
-    const letters = [...word].map(escapeRegex);
-    const pattern = letters.join('\\s*');
-    return new RegExp(`(?:^|\\s)${pattern}(?:\\s|$)`, 'gi'); // g & i for global and case-insensitive
-  }
+  // Build a normalized string (letters only) and map back to original indices
+  let normalized = "";
+  const indexMap = []; // normalized index -> original index
 
-  const bannedRegexes = bannedWords.map(makeRegexForWord);
-  console.log("Compiled banned regexes:", bannedRegexes);
-
-  // Analyze text and find matches of banned words
-  function analyze(text) {
-    let matches = [];
-
-    bannedRegexes.forEach(regex => {
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        matches.push({
-          start: match.index + (match[0].match(/^\s/) ? 1 : 0), // skip leading space if matched
-          end: regex.lastIndex,
-          pattern: regex.source
-        });
-
-        // To avoid infinite loop on zero-length matches
-        if (regex.lastIndex === match.index) {
-          regex.lastIndex++;
-        }
-      }
-    });
-
-    return matches;
-  }
-
-  // Merge overlapping or adjacent matches
-  function mergeRanges(ranges) {
-    if (!ranges.length) return [];
-    ranges.sort((a, b) => a.start - b.start);
-    const merged = [];
-    let current = { ...ranges[0] };
-    for (let i = 1; i < ranges.length; i++) {
-      if (ranges[i].start <= current.end) {
-        current.end = Math.max(current.end, ranges[i].end);
-      } else {
-        merged.push(current);
-        current = { ...ranges[i] };
-      }
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (/[a-zA-Z]/.test(ch)) {
+      normalized += ch.toLowerCase();
+      indexMap.push(i);
     }
-    merged.push(current);
-    return merged;
   }
 
-  // Escape HTML special characters to prevent injection and broken tags
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, m => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[m]));
-  }
+  banned.forEach(word => {
+    let start = 0;
+    while (true) {
+      const idx = normalized.indexOf(word, start);
+      if (idx === -1) break;
 
-  // Render text with highlight spans replacing spaces with underscores inside highlights
-  function render(text, matches) {
-    const merged = mergeRanges(matches);
-    let result = '';
-    let lastIndex = 0;
-    for (const range of merged) {
-      result += escapeHtml(text.slice(lastIndex, range.start));
-      const highlighted = escapeHtml(text.slice(range.start, range.end)).replace(/ /g, '_');
-      result += `<span class="highlight">${highlighted}</span>`;
-      lastIndex = range.end;
+      const origStart = indexMap[idx];
+      const origEnd = indexMap[idx + word.length - 1];
+      offenses.push([origStart, origEnd]);
+
+      start = idx + 1;
     }
-    result += escapeHtml(text.slice(lastIndex));
-    return result;
-  }
+  });
 
-  // Update highlight overlay on every input event
-  function update() {
-    const text = inputBox.value;
-    const matches = analyze(text);
-    outputBox.innerHTML = render(text, matches);
-  }
+  return offenses;
+}
 
-  inputBox.addEventListener("input", update);
+function highlight(text, ranges) {
+  if (ranges.length === 0) return text;
 
-  // Initial highlight (empty)
-  update();
+  ranges.sort((a, b) => a[0] - b[0]);
+
+  let result = "";
+  let lastIndex = 0;
+
+  ranges.forEach(([start, end]) => {
+    result += escapeHTML(text.slice(lastIndex, start));
+    result += `<mark>${escapeHTML(text.slice(start, end + 1))}</mark>`;
+    lastIndex = end + 1;
+  });
+
+  result += escapeHTML(text.slice(lastIndex));
+  return result;
+}
+
+function escapeHTML(str) {
+  return str.replace(/[&<>"']/g, m => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[m]));
+}
+
+input.addEventListener("input", () => {
+  const text = input.value;
+  const offenses = findOffenses(text, bannedWords);
+  output.innerHTML = highlight(text, offenses);
 });
