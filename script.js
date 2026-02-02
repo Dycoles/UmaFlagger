@@ -1,66 +1,93 @@
 console.log("script.js loaded");
 
-const banned = ["ho "];
+/* =========================
+   CONFIG
+========================= */
+
+const bannedWords = [
+  "ho",
+  "banned"
+];
+
+/* =========================
+   PATTERN GENERATION
+========================= */
+
+function generatePatterns(word) {
+  const patterns = new Set();
+
+  // exact
+  patterns.add(word);
+
+  // space before / after
+  patterns.add(" " + word);
+  patterns.add(word + " ");
+
+  // space inside (ban_ned)
+  for (let i = 1; i < word.length; i++) {
+    patterns.add(word.slice(0, i) + " " + word.slice(i));
+  }
+
+  return [...patterns];
+}
+
+const bannedPatterns = bannedWords.flatMap(w =>
+  generatePatterns(w.toLowerCase())
+);
+
+console.log("Generated patterns:", bannedPatterns);
+
+/* =========================
+   DOM
+========================= */
 
 const analyzeButton = document.getElementById("analyze");
 const inputBox = document.getElementById("input");
 const outputBox = document.getElementById("output");
 
-console.log("Elements:", {
+console.log("DOM elements:", {
   analyzeButton,
   inputBox,
   outputBox
 });
 
-analyzeButton.addEventListener("click", () => {
-  const text = inputBox.value;
-
-  console.log("Analyze clicked");
-  console.log("Input text:", JSON.stringify(text));
-
-  const matches = analyze(text);
-
-  console.log("Matches found:", matches);
-
-  const rendered = render(text, matches);
-  outputBox.innerHTML = rendered;
-});
+/* =========================
+   ANALYSIS
+========================= */
 
 function analyze(text) {
-  console.log("Running analyze()");
-
-  let matches = [];
+  console.log("Analyze start");
   const lower = text.toLowerCase();
+  let matches = [];
 
-  banned.forEach(pattern => {
-    console.log("Checking pattern:", JSON.stringify(pattern));
-
+  bannedPatterns.forEach(pattern => {
     let index = 0;
+
     while ((index = lower.indexOf(pattern, index)) !== -1) {
       console.log(
-        "Match found at",
-        index,
-        "→",
-        index + pattern.length,
-        "substring:",
-        JSON.stringify(text.slice(index, index + pattern.length))
+        `[MATCH] "${pattern}" @ ${index}-${index + pattern.length}`,
+        `"${text.slice(index, index + pattern.length)}"`
       );
 
       matches.push({
         start: index,
-        end: index + pattern.length
+        end: index + pattern.length,
+        pattern
       });
 
-      index += 1;
+      index += 1; // allow overlaps
     }
   });
 
+  console.log("All matches:", matches);
   return matches;
 }
 
-function render(text, matches) {
-  console.log("Rendering output");
+/* =========================
+   RENDERING
+========================= */
 
+function render(text, matches) {
   let result = text;
 
   matches
@@ -69,13 +96,25 @@ function render(text, matches) {
       const raw = text.slice(m.start, m.end);
       const visible = raw.replace(/ /g, "_");
 
-      console.log("Rendering highlight:", visible);
-
       result =
         result.slice(0, m.start) +
-        `<span class="highlight">${visible}</span>` +
+        `<span class="highlight" title="${m.pattern.replace(/ /g, "_")}">${visible}</span>` +
         result.slice(m.end);
     });
 
   return result;
 }
+
+/* =========================
+   EVENT
+========================= */
+
+analyzeButton.addEventListener("click", () => {
+  console.log("Analyze clicked");
+
+  const text = inputBox.value;
+  console.log("Input:", JSON.stringify(text));
+
+  const matches = analyze(text);
+  outputBox.innerHTML = render(text, matches);
+});
