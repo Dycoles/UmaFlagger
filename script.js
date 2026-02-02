@@ -5,23 +5,28 @@ const bannedWords = ["3p", "jj", "xx", "aho", "bum", "cbt", "gay", "gei", "jcb",
 const input = document.getElementById("input");
 const output = document.getElementById("output");
 
-function hasRequiredSpace(text, start, end) {
-  // space before
-  if (start > 0 && text[start - 1] === " ") return true;
-  // space after
-  if (end < text.length - 1 && text[end + 1] === " ") return true;
-  // space between letters
-  for (let i = start; i <= end; i++) {
-    if (text[i] === " ") return true;
-  }
-  return false;
-}
-
 function findOffenses(text, banned) {
   const offenses = [];
 
   let buffer = "";
   let bufferMap = [];
+
+  function expandRange(start, end) {
+    // include spaces before
+    while (start > 0 && text[start - 1] === " ") start--;
+    // include spaces after
+    while (end < text.length - 1 && text[end + 1] === " ") end++;
+    return [start, end];
+  }
+
+  function hasRequiredSpace(start, end) {
+    if (start > 0 && text[start - 1] === " ") return true;
+    if (end < text.length - 1 && text[end + 1] === " ") return true;
+    for (let i = start; i <= end; i++) {
+      if (text[i] === " ") return true;
+    }
+    return false;
+  }
 
   function flushBuffer() {
     if (!buffer) return;
@@ -29,12 +34,11 @@ function findOffenses(text, banned) {
     banned.forEach(word => {
       let idx = buffer.indexOf(word);
       while (idx !== -1) {
-        const origStart = bufferMap[idx];
-        const origEnd = bufferMap[idx + word.length - 1];
+        let start = bufferMap[idx];
+        let end = bufferMap[idx + word.length - 1];
 
-        // REQUIRE at least one literal space before/after/between
-        if (hasRequiredSpace(text, origStart, origEnd)) {
-          offenses.push([origStart, origEnd]);
+        if (hasRequiredSpace(start, end)) {
+          offenses.push(expandRange(start, end));
         }
 
         idx = buffer.indexOf(word, idx + 1);
@@ -52,7 +56,6 @@ function findOffenses(text, banned) {
       buffer += ch.toLowerCase();
       bufferMap.push(i);
     } else if (ch === " " || ch === "'" || ch === "_") {
-      // soft separators: ignored but don't flush
       continue;
     } else {
       flushBuffer();
