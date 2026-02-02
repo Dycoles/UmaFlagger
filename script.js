@@ -1,14 +1,14 @@
-const banned = ["ho"];
+const banned = ["ho "];
 
 function analyze(text) {
   let matches = [];
 
-  banned.forEach(word => {
+  banned.forEach(pattern => {
     let index = 0;
-    while ((index = text.toLowerCase().indexOf(word, index)) !== -1) {
+    while ((index = text.toLowerCase().indexOf(pattern, index)) !== -1) {
       matches.push({
         start: index,
-        end: index + word.length
+        end: index + pattern.length
       });
       index += 1;
     }
