@@ -8,37 +8,47 @@ const output = document.getElementById("output");
 function findOffenses(text, banned) {
   const offenses = [];
 
-  // Build a normalized string (letters only) and map back to original indices
-  let normalized = "";
-  const indexMap = []; // normalized index -> original index
+  let buffer = "";
+  let bufferMap = [];
+
+  function flushBuffer() {
+    if (!buffer) return;
+
+    banned.forEach(word => {
+      let idx = buffer.indexOf(word);
+      while (idx !== -1) {
+        const start = bufferMap[idx];
+        const end = bufferMap[idx + word.length - 1];
+        offenses.push([start, end]);
+        idx = buffer.indexOf(word, idx + 1);
+      }
+    });
+
+    buffer = "";
+    bufferMap = [];
+  }
 
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
+
     if (/[a-zA-Z]/.test(ch)) {
-      normalized += ch.toLowerCase();
-      indexMap.push(i);
+      buffer += ch.toLowerCase();
+      bufferMap.push(i);
+    } else if (ch === " " || ch === "'" || ch === "_") {
+      // allow soft separators to be skipped
+      continue;
+    } else {
+      // hard break on punctuation/newlines
+      flushBuffer();
     }
   }
 
-  banned.forEach(word => {
-    let start = 0;
-    while (true) {
-      const idx = normalized.indexOf(word, start);
-      if (idx === -1) break;
-
-      const origStart = indexMap[idx];
-      const origEnd = indexMap[idx + word.length - 1];
-      offenses.push([origStart, origEnd]);
-
-      start = idx + 1;
-    }
-  });
-
+  flushBuffer();
   return offenses;
 }
 
 function highlight(text, ranges) {
-  if (ranges.length === 0) return text;
+  if (ranges.length === 0) return escapeHTML(text);
 
   ranges.sort((a, b) => a[0] - b[0]);
 
