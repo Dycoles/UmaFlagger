@@ -1,22 +1,36 @@
-const bannedWords = ["ho"];
+const banned = ["ho"];
 
-document.getElementById("analyze").addEventListener("click", () => {
-  const text = document.getElementById("input").value;
-  const output = document.getElementById("output");
+function analyze(text) {
+  let matches = [];
 
-  const tokens = [...text.matchAll(/\b\w+\b/g)];
-  let result = text;
-
-  // Process from end to avoid index shifting
-  tokens.reverse().forEach(match => {
-    const word = match[0].toLowerCase();
-    if (bannedWords.includes(word)) {
-      result =
-        result.slice(0, match.index) +
-        `<span class="highlight">${match[0]}</span>` +
-        result.slice(match.index + match[0].length);
+  banned.forEach(word => {
+    let index = 0;
+    while ((index = text.toLowerCase().indexOf(word, index)) !== -1) {
+      matches.push({
+        start: index,
+        end: index + word.length
+      });
+      index += 1;
     }
   });
 
-  output.innerHTML = result;
-});
+  return matches;
+}
+
+function render(text, matches) {
+  let result = text;
+
+  matches
+    .sort((a, b) => b.start - a.start)
+    .forEach(m => {
+      const raw = text.slice(m.start, m.end);
+      const visible = raw.replace(/ /g, "_");
+
+      result =
+        result.slice(0, m.start) +
+        `<span class="highlight">${visible}</span>` +
+        result.slice(m.end);
+    });
+
+  return result;
+}
