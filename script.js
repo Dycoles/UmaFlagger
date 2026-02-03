@@ -19,15 +19,6 @@ function findOffenses(text, banned) {
     return [start, end];
   }
 
-  function hasRequiredSpace(start, end) {
-    if (start > 0 && text[start - 1] === " ") return true;
-    if (end < text.length - 1 && text[end + 1] === " ") return true;
-    for (let i = start; i <= end; i++) {
-      if (text[i] === " ") return true;
-    }
-    return false;
-  }
-
   function flushBuffer() {
     if (!buffer) return;
 
@@ -37,9 +28,7 @@ function findOffenses(text, banned) {
         let start = bufferMap[idx];
         let end = bufferMap[idx + word.length - 1];
 
-        if (hasRequiredSpace(start, end)) {
-          offenses.push(expandRange(start, end));
-        }
+        offenses.push(expandRange(start, end));
 
         idx = buffer.indexOf(word, idx + 1);
       }
