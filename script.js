@@ -44,7 +44,7 @@ function findOffenses(text, banned) {
     if (/[a-zA-Z]/.test(ch)) {
       buffer += ch.toLowerCase();
       bufferMap.push(i);
-    } else if (ch === " " || ch === "'" || ch === "_") {
+    } else if (ch === " " || ch === "'" || ch === "_" || ch === "-" || ch === "." || ch === "," || ch === "|" || ch === "^" || ch === "*") {
       continue;
     } else {
       flushBuffer();
