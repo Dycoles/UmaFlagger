@@ -4,6 +4,20 @@ const bannedWords = ["inko", "sag", "kill", "butt", "sex", "tit", "fuk", "ifica"
 
 const input = document.getElementById("input");
 const output = document.getElementById("output");
+// New element for suggestions
+let suggestionsDiv = document.getElementById("suggestions");
+
+const replace_map = {
+  a: ["4"],
+  e: ["3"],
+  i: ["1"],
+  o: ["0"],
+  s: ["5"],
+  t: ["7"],
+  g: ["9"],
+  b: ["8"],
+  l: ["1"]
+};
 
 function findOffenses(text, banned) {
   const offenses = [];
@@ -83,8 +97,36 @@ function escapeHTML(str) {
   }[m]));
 }
 
+function bypassFilter(text, offenses) {
+  let replacedText = [];
+  if (offenses.length > 0) {
+    for (let i = 0; i < offenses.length; i++) {
+      const [start, end] = offenses[i];
+      const word = text.slice(start, end + 1).trim();
+      let modifiedWord = null;
+      for (let j = 0; j < word.length; j++) {
+        const ch = word[j].toLowerCase();
+        if (replace_map[ch]) {
+          const replacements = replace_map[ch][0];
+          modifiedWord = word.slice(0, j) + replacements + word.slice(j + 1);
+          break;
+        }
+      }
+      if (modifiedWord) {
+        replacedText.push(`"${word}" → "${modifiedWord}"`);
+      }
+    }
+    if (replacedText.length > 0) {
+      suggestionsDiv.innerHTML = "<strong>Bypass suggestions:</strong><br>" + replacedText.join("<br>");
+    } else {
+      suggestionsDiv.innerHTML = "No bypass suggestions available.";
+    }
+  }
+}
+
 input.addEventListener("input", () => {
   const text = input.value;
   const offenses = findOffenses(text, bannedWords);
   output.innerHTML = highlight(text, offenses);
+  bypassFilter(text, offenses);
 });
